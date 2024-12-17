@@ -9,12 +9,15 @@ const nextBoard = [];
 let score = 0;
 let speed = 400; // Анхны хурд
 let gameInterval; // Тоглоомын интервал
+let level = 1; // Анхны түвшин
+const levelUpScore = 600; // Түвшин ахих онооны босго
+let savedShape = null; // Хадгалсан блокыг хадгалах хувьсагч
 
 // Блокын хэлбэрүүд
 const shapes = [
   [
-    [1, 1, 1],
     [0, 1, 0],
+    [1, 1, 1],
   ], // T хэлбэр
   [
     [1, 1, 0],
@@ -38,18 +41,91 @@ const shapes = [
     [1, 1, 1],
   ], // J хэлбэр
 ];
+function updateLevel() {
+  const newLevel = Math.floor(score / levelUpScore) + 1;
+  if (newLevel > level) {
+    level = newLevel;
+    setSpeed(speed - 50 * (level - 1)); // Хурдыг нэмэгдүүлнэ
+    document.getElementById("level").textContent = level; // Дэлгэц дээр түвшинг харуулах
+  }
+}
 
 // Санамсаргүй өнгө үүсгэх функц
 function getRandomColor() {
-  const colors = ["#f39c12", "#e74c3c", "#3498db", "#2ecc71", "#9b59b6", "#e67e22"];
+  const colors = [
+    "#f39c12",
+    "#e74c3c",
+    "#3498db",
+    "#2ecc71",
+    "#9b59b6",
+    "#e67e22",
+  ];
   return colors[Math.floor(Math.random() * colors.length)];
 }
 
-// Санамсаргүй блок үүсгэх
+let bag = [];
+
+// Function to shuffle an array (Fisher-Yates shuffle)
+function shuffle(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+}
+
+// Function to refill the bag with all 7 shapes in random order
+function refillBag() {
+  bag = [...shapes]; // Copy all shapes into the bag
+  shuffle(bag); // Shuffle the bag
+}
+
+// Function to get the next shape from the 7-bag
 function getRandomShape() {
-  const shape = shapes[Math.floor(Math.random() * shapes.length)];
-  const color = getRandomColor();
+  if (bag.length === 0) {
+    refillBag(); // If the bag is empty, refill it
+  }
+  const shape = bag.pop(); // Get the last shape from the bag
+  const color = getRandomColor(); // Assign a random color
   return { shape, color, x: Math.floor(cols / 2 - shape[0].length / 2), y: 0 };
+}
+
+// Initialize the first bag
+refillBag();
+let lockTimer = null; // Timer for locking delay
+const LOCK_DELAY = 500; // Delay in milliseconds
+
+function moveShape(direction) {
+  if (direction === "down") {
+    currentShape.y++;
+    if (!isValidPosition()) {
+      currentShape.y--; // Revert the move
+
+      // Start the lock delay timer
+      if (!lockTimer) {
+        lockTimer = setTimeout(() => {
+          lockShape();
+          currentShape = getNextShape();
+          clearFullRows();
+          checkGameOver();
+          lockTimer = null; // Reset the timer
+          drawShape();
+        }, LOCK_DELAY);
+      }
+    } else {
+      // If the piece can still move, reset the lock timer
+      if (lockTimer) {
+        clearTimeout(lockTimer);
+        lockTimer = null;
+      }
+    }
+  } else if (direction === "left") {
+    currentShape.x--;
+    if (!isValidPosition()) currentShape.x++;
+  } else if (direction === "right") {
+    currentShape.x++;
+    if (!isValidPosition()) currentShape.x--;
+  }
+  drawShape();
 }
 
 // Одоогийн болон дараагийн блокуудыг үүсгэх
@@ -69,9 +145,9 @@ for (let r = 0; r < rows; r++) {
 }
 
 // Дараагийн хэлбэрийн талбар үүсгэх
-for (let r = 0; r < 3; r++) {
+for (let r = 0; r < 4; r++) {
   const row = [];
-  for (let c = 0; c < 3; c++) {
+  for (let c = 0; c < 4; c++) {
     const cell = document.createElement("div");
     cell.classList.add("cell");
     nextShapeContainer.appendChild(cell);
@@ -85,7 +161,13 @@ function drawShadow() {
   clearShadow();
   let tempY = currentShape.y;
 
-  while (isValidPosition({ x: currentShape.x, y: tempY + 1, shape: currentShape.shape })) {
+  while (
+    isValidPosition({
+      x: currentShape.x,
+      y: tempY + 1,
+      shape: currentShape.shape,
+    })
+  ) {
     tempY++;
   }
 
@@ -139,26 +221,6 @@ function clearBoard() {
   );
 }
 
-// Блокыг хөдөлгөх
-function moveShape(direction) {
-  if (direction === "down") {
-    currentShape.y++;
-    if (!isValidPosition()) {
-      currentShape.y--;
-      lockShape();
-      currentShape = getNextShape();
-      clearFullRows();
-      checkGameOver();
-    }
-  } else if (direction === "left") {
-    currentShape.x--;
-    if (!isValidPosition()) currentShape.x++;
-  } else if (direction === "right") {
-    currentShape.x++;
-    if (!isValidPosition()) currentShape.x--;
-  }
-  drawShape();
-}
 function setSpeed(newSpeed) {
   speed = newSpeed;
 
@@ -188,7 +250,11 @@ function lockShape() {
 }
 
 // Хязгаар шалгах
-function isValidPosition({ x = currentShape.x, y = currentShape.y, shape = currentShape.shape } = {}) {
+function isValidPosition({
+  x = currentShape.x,
+  y = currentShape.y,
+  shape = currentShape.shape,
+} = {}) {
   return shape.every((row, rIdx) => {
     return row.every((value, cIdx) => {
       if (!value) return true;
@@ -202,6 +268,51 @@ function isValidPosition({ x = currentShape.x, y = currentShape.y, shape = curre
       );
     });
   });
+}
+// Одоогийн блокыг хадгалах функц
+function saveShape() {
+  savedShape = {
+    shape: currentShape.shape.map(row => [...row]), // Хэлбэрийг хуулбарлана
+    color: currentShape.color, // Өнгө хадгална
+    x: currentShape.x, // Байрлалын x
+    y: currentShape.y, // Байрлалын y
+  };
+  clearShape(); // Талбайгаас блокыг арилгана
+  
+}
+
+// Блокыг талбайгаас арилгах функц
+function clearShape() {
+  currentShape.shape.forEach((row, rIdx) => {
+    row.forEach((value, cIdx) => {
+      if (value) {
+        const x = currentShape.x + cIdx;
+        const y = currentShape.y + rIdx;
+        if (y >= 0 && board[y] && board[y][x]) {
+          const cell = board[y][x];
+          cell.classList.remove("active");
+          cell.style.setProperty("--color", "");
+        }
+      }
+    });
+  });
+  currentShape = getNextShape(); // Шинэ блок үүсгэнэ
+  drawShape(); // Талбайг шинэчлэн зурна
+}
+
+// Хадгалсан блокыг буцааж гаргаж ирэх функц
+function restoreShape() {
+  if (savedShape) {
+    currentShape = {
+      shape: savedShape.shape.map(row => [...row]), // Хэлбэрийг сэргээнэ
+      color: savedShape.color, // Өнгийг сэргээнэ
+      x: Math.floor(cols / 2 - savedShape.shape[0].length / 2), // Төвд байрлуулна
+      y: 0, // Дээд талд байрлуулна
+    };
+    drawShape(); // Блокыг дахин зурна
+    savedShape = null; // Хадгалсан блокыг устгана
+  
+  }
 }
 
 // Мөрийг устгах
@@ -231,6 +342,12 @@ function updateScore(rowsCleared) {
   const points = [0, 100, 300, 500, 800];
   score += points[rowsCleared];
   document.getElementById("score").textContent = score;
+  updateLevel(); // Шинэ онооны дараа түвшинг шинэчилнэ
+}
+function setSpeed(newSpeed) {
+  speed = Math.max(newSpeed, 50); // Хурд хамгийн багадаа 50мс байна
+  clearInterval(gameInterval); // Өмнөх интервал зогсоох
+  gameInterval = setInterval(() => moveShape("down"), speed);
 }
 
 // Тоглоом дуусахыг шалгах
@@ -280,16 +397,11 @@ function rotateShape() {
   drawShape();
 }
 
-// Тоглоом эхлүүлэх
-function startGame() {
-  drawShape();
-  drawNextShape();
-  setInterval(() => moveShape("down"), 400);
-}
-
 // Товчлуураар удирдах
 document.addEventListener("keydown", (event) => {
-  if (event.key === "ArrowLeft") moveShape("left");
+  if (event.key === "z") saveShape(); // "S" дарж блокыг хадгална
+  else if (event.key === "x") restoreShape(); // "R" дарж блокыг сэргээнэ
+  else if (event.key === "ArrowLeft") moveShape("left");
   else if (event.key === "ArrowRight") moveShape("right");
   else if (event.key === "ArrowDown") moveShape("down");
   else if (event.key === "ArrowUp") rotateShape();
@@ -307,7 +419,86 @@ document.addEventListener("keydown", (event) => {
 
 // Тоглоом эхлүүлэх
 function startGame() {
+  level = 1;
+  score = 0;
   drawShape();
   drawNextShape();
   setSpeed(speed); // Эхний хурдыг тохируулна
 }
+
+
+
+let gameOver = false;  // Тоглоом дууссан эсэхийг шалгах хувьсагч
+
+function startGame() {
+  if (gameOver) {
+    resetGame();  // Тоглоом дууссан бол дахин эхлүүлэх
+  }
+
+  level = 1;
+  score = 0;
+  gameOver = false; // Тоглоом дууссан байхыг устгах
+  refillBag(); // Багийг шинэчлэх
+  currentShape = getRandomShape(); // Шинэ блок үүсгэх
+  nextShape = getRandomShape(); // Дараагийн блок үүсгэх
+
+  // Эхний хурдыг тохируулна
+  setSpeed(speed);
+
+  // Тоглоомын талбар болон дараагийн блокийг зурна
+  drawShape();      // Одоо байгаа блокийг зурна
+  drawNextShape();  // Дараагийн блокийг зурна
+
+  // Тоглоомын цагийг эхлүүлэх
+  gameInterval = setInterval(() => moveShape("down"), speed);
+}
+
+function resetGame() {
+  clearInterval(gameInterval); // Өмнөх тоглоомын интервал зогсооно
+  gameOver = false;  // Тоглоомын дууссан байдал хүлээн зөвшөөрөхгүй
+  level = 1;         // Түвшинг 1 болгох
+  score = 0;         // Оноог 0 болгох
+  refillBag();       // Шинэ багийн блоктой болгох
+  currentShape = getRandomShape(); // Шинэ блок үүсгэх
+  nextShape = getRandomShape();    // Дараагийн блок үүсгэх
+
+  // Талбар болон дахин тоглоом эхлэх
+  clearBoard();      // Талбарыг цэвэрлэх
+  drawShape();       // Шинэ блокыг зурах
+  drawNextShape();   // Дараагийн блокыг зурах
+  setSpeed(speed);   // Тоглоомын хурдыг тохируулна
+
+  // Тоглоомыг эхлүүлэх
+  gameInterval = setInterval(() => moveShape("down"), speed);
+}
+
+function checkGameOver() {
+  if (board[0].some((cell) => cell.classList.contains("fixed"))) {
+    alert("Тоглоом дууслаа! Дахин эхлүүлэхийн тулд 'r' товчийг дарна уу.");
+    gameOver = true; // Тоглоом дууссан гэж тэмдэглэнэ
+    clearInterval(gameInterval); // Тоглоомын интервал зогсох
+  }
+}
+
+document.addEventListener("keydown", (event) => {
+  // Тоглоом дууссан үед 'r' товчийг дарж дахин эхлүүлнэ
+  if (gameOver && event.key === "r") {
+    startGame();  // Тоглоомыг дахин эхлүүлэх
+  }
+
+  // Бусад товчлууруудын үйлдлийг гүйцэтгэх
+  if (event.key === "ArrowLeft") moveShape("left");
+  else if (event.key === "ArrowRight") moveShape("right");
+  else if (event.key === "ArrowDown") moveShape("down");
+  else if (event.key === "ArrowUp") rotateShape();
+  else if (event.key === " ") {
+    while (isValidPosition({ x: currentShape.x, y: currentShape.y + 1 })) {
+      currentShape.y++;
+    }
+    lockShape();
+    currentShape = getNextShape();
+    clearFullRows();
+    checkGameOver();
+    drawShape();
+  }
+});
