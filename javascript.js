@@ -350,10 +350,16 @@ function setSpeed(newSpeed) {
   gameInterval = setInterval(() => moveShape("down"), speed);
 }
 
+
+
 // Тоглоом дуусахыг шалгах
 function checkGameOver() {
   if (board[0].some((cell) => cell.classList.contains("fixed"))) {
-    alert("Тоглоом дууслаа!");
+    // Тоглоом дууссан үед "Game Over" гэсэн текстийг харуулах
+    document.getElementById('game-over').style.display = 'block';
+
+    // Тоглоомыг зогсоох
+    clearInterval(gameInterval);
     location.reload();
   }
 }
@@ -417,88 +423,35 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// Тоглоом эхлүүлэх
+// // Тоглоом эхлүүлэх
+// function startGame() {
+//   level = 1;
+//   score = 0;
+//   drawShape();
+//   drawNextShape();
+//   setSpeed(speed); // Эхний хурдыг тохируулна
+// }
+
+// Тоглоом эхлүүлэх буюу дахин эхлүүлэх функц
 function startGame() {
+  // Тоглоомын эхлүүлэх тохиргоо
   level = 1;
   score = 0;
-  drawShape();
-  drawNextShape();
-  setSpeed(speed); // Эхний хурдыг тохируулна
-}
+  gameOver = false;  // Тоглоом дууссан байхыг устгана
 
+  // Тоглоомын дараах тохиргоог хийх
+  drawShape();       // Одоо байгаа блокийг зурна
+  drawNextShape();   // Дараагийн блокийг зурна
+  setSpeed(speed);   // Эхний хурдыг тохируулна
 
-
-let gameOver = false;  // Тоглоом дууссан эсэхийг шалгах хувьсагч
-
-function startGame() {
-  if (gameOver) {
-    resetGame();  // Тоглоом дууссан бол дахин эхлүүлэх
-  }
-
-  level = 1;
-  score = 0;
-  gameOver = false; // Тоглоом дууссан байхыг устгах
-  refillBag(); // Багийг шинэчлэх
-  currentShape = getRandomShape(); // Шинэ блок үүсгэх
-  nextShape = getRandomShape(); // Дараагийн блок үүсгэх
-
-  // Эхний хурдыг тохируулна
-  setSpeed(speed);
-
-  // Тоглоомын талбар болон дараагийн блокийг зурна
-  drawShape();      // Одоо байгаа блокийг зурна
-  drawNextShape();  // Дараагийн блокийг зурна
-
-  // Тоглоомын цагийг эхлүүлэх
+  // Тоглоомыг эхлүүлэх интервал
   gameInterval = setInterval(() => moveShape("down"), speed);
 }
 
-function resetGame() {
-  clearInterval(gameInterval); // Өмнөх тоглоомын интервал зогсооно
-  gameOver = false;  // Тоглоомын дууссан байдал хүлээн зөвшөөрөхгүй
-  level = 1;         // Түвшинг 1 болгох
-  score = 0;         // Оноог 0 болгох
-  refillBag();       // Шинэ багийн блоктой болгох
-  currentShape = getRandomShape(); // Шинэ блок үүсгэх
-  nextShape = getRandomShape();    // Дараагийн блок үүсгэх
-
-  // Талбар болон дахин тоглоом эхлэх
-  clearBoard();      // Талбарыг цэвэрлэх
-  drawShape();       // Шинэ блокыг зурах
-  drawNextShape();   // Дараагийн блокыг зурах
-  setSpeed(speed);   // Тоглоомын хурдыг тохируулна
-
-  // Тоглоомыг эхлүүлэх
-  gameInterval = setInterval(() => moveShape("down"), speed);
+// Тоглоомыг дахин эхлүүлэх функц
+function restartGame() {
+  // Тоглоом эхлэхтэй ижил тохиргоог хийнэ
+  startGame();
 }
 
-function checkGameOver() {
-  if (board[0].some((cell) => cell.classList.contains("fixed"))) {
-    alert("Тоглоом дууслаа! Дахин эхлүүлэхийн тулд 'r' товчийг дарна уу.");
-    gameOver = true; // Тоглоом дууссан гэж тэмдэглэнэ
-    clearInterval(gameInterval); // Тоглоомын интервал зогсох
-  }
-}
 
-document.addEventListener("keydown", (event) => {
-  // Тоглоом дууссан үед 'r' товчийг дарж дахин эхлүүлнэ
-  if (gameOver && event.key === "r") {
-    startGame();  // Тоглоомыг дахин эхлүүлэх
-  }
-
-  // Бусад товчлууруудын үйлдлийг гүйцэтгэх
-  if (event.key === "ArrowLeft") moveShape("left");
-  else if (event.key === "ArrowRight") moveShape("right");
-  else if (event.key === "ArrowDown") moveShape("down");
-  else if (event.key === "ArrowUp") rotateShape();
-  else if (event.key === " ") {
-    while (isValidPosition({ x: currentShape.x, y: currentShape.y + 1 })) {
-      currentShape.y++;
-    }
-    lockShape();
-    currentShape = getNextShape();
-    clearFullRows();
-    checkGameOver();
-    drawShape();
-  }
-});
