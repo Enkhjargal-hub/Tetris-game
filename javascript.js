@@ -10,8 +10,7 @@ let score = 0;
 let speed = 400; // Анхны хурд
 let gameInterval; // Тоглоомын интервал
 let level = 1; // Анхны түвшин
-const levelUpScore = 600; // Түвшин ахих онооны босго
-let savedShape = null; // Хадгалсан блокыг хадгалах хувьсагч
+const levelUpScore = 700; // Түвшин ахих онооны босго
 
 // Блокын хэлбэрүүд
 const shapes = [
@@ -48,6 +47,14 @@ function updateLevel() {
     setSpeed(speed - 50 * (level - 1)); // Хурдыг нэмэгдүүлнэ
     document.getElementById("level").textContent = level; // Дэлгэц дээр түвшинг харуулах
   }
+}
+
+const gameOverSound = new Audio("sounds/videoplayback.mp4");
+
+// Helper function to play sounds
+function playSound(sound) {
+  sound.currentTime = 0; // Reset sound to start
+  sound.play();
 }
 
 // Санамсаргүй өнгө үүсгэх функц
@@ -269,49 +276,6 @@ function isValidPosition({
     });
   });
 }
-// Одоогийн блокыг хадгалах функц
-function saveShape() {
-  savedShape = {
-    shape: currentShape.shape.map((row) => [...row]), // Хэлбэрийг хуулбарлана
-    color: currentShape.color, // Өнгө хадгална
-    x: currentShape.x, // Байрлалын x
-    y: currentShape.y, // Байрлалын y
-  };
-  clearShape(); // Талбайгаас блокыг арилгана
-}
-
-// Блокыг талбайгаас арилгах функц
-function clearShape() {
-  currentShape.shape.forEach((row, rIdx) => {
-    row.forEach((value, cIdx) => {
-      if (value) {
-        const x = currentShape.x + cIdx;
-        const y = currentShape.y + rIdx;
-        if (y >= 0 && board[y] && board[y][x]) {
-          const cell = board[y][x];
-          cell.classList.remove("active");
-          cell.style.setProperty("--color", "");
-        }
-      }
-    });
-  });
-  currentShape = getNextShape(); // Шинэ блок үүсгэнэ
-  drawShape(); // Талбайг шинэчлэн зурна
-}
-
-// Хадгалсан блокыг буцааж гаргаж ирэх функц
-function restoreShape() {
-  if (savedShape) {
-    currentShape = {
-      shape: savedShape.shape.map((row) => [...row]), // Хэлбэрийг сэргээнэ
-      color: savedShape.color, // Өнгийг сэргээнэ
-      x: Math.floor(cols / 2 - savedShape.shape[0].length / 2), // Төвд байрлуулна
-      y: 0, // Дээд талд байрлуулна
-    };
-    drawShape(); // Блокыг дахин зурна
-    savedShape = null; // Хадгалсан блокыг устгана
-  }
-}
 
 // Мөрийг устгах
 function clearFullRows() {
@@ -351,11 +315,8 @@ function setSpeed(newSpeed) {
 // Тоглоом дуусахыг шалгах
 function checkGameOver() {
   if (board[0].some((cell) => cell.classList.contains("fixed"))) {
-    // Тоглоом дууссан үед "Game Over" гэсэн текстийг харуулах
-    document.getElementById("game-over").style.display = "block";
-
-    // Тоглоомыг зогсоох
-    clearInterval(gameInterval);
+    playSound(gameOverSound);
+    alert("Тоглоом дууслаа!");
     location.reload();
   }
 }
@@ -401,9 +362,7 @@ function rotateShape() {
 
 // Товчлуураар удирдах
 document.addEventListener("keydown", (event) => {
-  if (event.key === "z") saveShape(); // "S" дарж блокыг хадгална
-  else if (event.key === "x") restoreShape(); // "R" дарж блокыг сэргээнэ
-  else if (event.key === "ArrowLeft") moveShape("left");
+  if (event.key === "ArrowLeft") moveShape("left");
   else if (event.key === "ArrowRight") moveShape("right");
   else if (event.key === "ArrowDown") moveShape("down");
   else if (event.key === "ArrowUp") rotateShape();
@@ -419,58 +378,11 @@ document.addEventListener("keydown", (event) => {
   }
 });
 
-// // Тоглоом эхлүүлэх
-// function startGame() {
-//   level = 1;
-//   score = 0;
-//   drawShape();
-//   drawNextShape();
-//   setSpeed(speed); // Эхний хурдыг тохируулна
-// }
-
-// Тоглоом эхлүүлэх буюу дахин эхлүүлэх функц
+// Тоглоом эхлүүлэх
 function startGame() {
-  // Тоглоомын эхлүүлэх тохиргоо
   level = 1;
   score = 0;
-  gameOver = false; // Тоглоом дууссан байхыг устгана
-
-  // Тоглоомын дараах тохиргоог хийх
-  drawShape(); // Одоо байгаа блокийг зурна
-  drawNextShape(); // Дараагийн блокийг зурна
+  drawShape();
+  drawNextShape();
   setSpeed(speed); // Эхний хурдыг тохируулна
-
-  // Тоглоомыг эхлүүлэх интервал
-  gameInterval = setInterval(() => moveShape("down"), speed);
-}
-
-// Тоглоомыг дахин эхлүүлэх функц
-function restartGame() {
-  // Тоглоом эхлэхтэй ижил тохиргоог хийнэ
-  startGame();
-}
-
-const gameOverModal = document.getElementById("game-over");
-
-// Тоглоом дуусахыг шалгах
-function checkGameOver() {
-  if (board[0].some((cell) => cell.classList.contains("fixed"))) {
-    // Тоглоом дууссан үед "Game Over" гэсэн текстийг харуулах
-    document.getElementById("game-over").style.display = "block";
-
-    // Тоглоомыг зогсоох
-    clearInterval(gameInterval);
-    location.reload();
-    gameOverModal.classList.add("modal-active");
-  }
-}
-
-
-
-function restartGame() {
-  console.log("sadas");
-  gameOverModal.classList.remove("modal-active"); // Modal-ийг хаах
-  // btn.style.display = "block"; // Товчийг дахин үзүүлэх
-  // Тоглоом дахин эхлэх кодыг энд оруулна
-  startGame(); // Тоглоом дахин эхлүүлэх
 }
