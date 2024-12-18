@@ -386,3 +386,4 @@ function startGame() {
   drawNextShape();
   setSpeed(speed); // Эхний хурдыг тохируулна
 }
+
